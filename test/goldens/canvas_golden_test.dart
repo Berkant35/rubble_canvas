@@ -88,4 +88,27 @@ void main() {
       matchesGoldenFile('edge_picker.png'),
     );
   });
+
+  testWidgets('site map with heard, not heard and measuring points', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _frame(
+        SiteMap(
+          outline: _lShape.polygon!,
+          points: [
+            MapPoint(at: p(-10, -8), kind: MapPointKind.heard),
+            MapPoint(at: p(10, -8), kind: MapPointKind.notHeard),
+            MapPoint(at: p(10, 8), kind: MapPointKind.measuring),
+          ],
+          style: _light,
+          semanticLabel: 'map',
+        ),
+      ),
+    );
+    await expectLater(
+      find.byKey(const ValueKey('golden')),
+      matchesGoldenFile('site_map.png'),
+    );
+  });
 }

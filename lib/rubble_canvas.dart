@@ -8,3 +8,4 @@ export 'src/outline_editor.dart';
 export 'src/outline_painter.dart';
 export 'src/rubble_canvas_style.dart';
 export 'src/site_grid_painter.dart';
+export 'src/site_map.dart';
