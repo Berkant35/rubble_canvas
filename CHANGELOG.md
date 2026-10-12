@@ -1,5 +1,5 @@
 ## 0.3.0
-- `HeatLayer`: probabilities on a grid with 50 % / 90 % thresholds, drawn by `SiteMap` as two regions
+- `HeatLayer`: the 50 % / 90 % region of every grid cell, drawn by `SiteMap` as two regions
   (never a single point); `MapPointKind.suggested`; optional `RubbleCanvasStyle.region` colour.
 
 ## 0.2.0

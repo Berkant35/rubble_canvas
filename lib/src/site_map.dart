@@ -246,7 +246,7 @@ class _SiteMapPainter extends CustomPainter {
     final likely = Path();
     final possible = Path();
     final side = heat.cell.value * view.pxPerMetre;
-    for (var i = 0; i < heat.values.length; i++) {
+    for (var i = 0; i < heat.length; i++) {
       final region = switch (heat.regionOf(i)) {
         HeatRegion.likely50 => likely,
         HeatRegion.likely90 => possible,

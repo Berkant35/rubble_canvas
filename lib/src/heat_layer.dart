@@ -13,22 +13,24 @@ enum HeatRegion {
   outside,
 }
 
-/// Probabilities on a grid over the site, with the 50 % and 90 % thresholds — drawn as regions, never
-/// as a single point. Kept free of any engine type: the app converts its map into this.
+/// The 50 % and 90 % probability regions on a grid over the site — drawn as regions, never as a single
+/// point. Kept free of any engine type: the app converts its map into this.
 @immutable
 final class HeatLayer {
-  /// Creates a layer; [values] are row by row from the south (index = row × cols + col).
+  /// Creates a layer; [regions] are row by row from the south (index = row × cols + col).
   HeatLayer({
     required this.origin,
     required this.cell,
     required this.cols,
     required this.rows,
-    required List<double> values,
-    required this.threshold50,
-    required this.threshold90,
-  }) : values = List.unmodifiable(values) {
-    if (values.length != cols * rows) {
-      throw ArgumentError.value(values.length, 'values', 'must be cols × rows');
+    required List<HeatRegion> regions,
+  }) : _regions = List.unmodifiable(regions) {
+    if (regions.length != cols * rows) {
+      throw ArgumentError.value(
+        regions.length,
+        'regions',
+        'must be cols × rows',
+      );
     }
   }
 
@@ -44,21 +46,11 @@ final class HeatLayer {
   /// Cells south → north.
   final int rows;
 
-  /// Probability per cell.
-  final List<double> values;
+  final List<HeatRegion> _regions;
 
-  /// Cells with at least this probability are in the 50 % region.
-  final double threshold50;
+  /// Number of cells.
+  int get length => _regions.length;
 
-  /// Cells with at least this probability are in the 90 % region.
-  final double threshold90;
-
-  /// The region of cell [index]; a cell with probability 0 is never in a region.
-  HeatRegion regionOf(int index) {
-    final v = values[index];
-    if (v <= 0) return HeatRegion.outside;
-    if (v >= threshold50) return HeatRegion.likely50;
-    if (v >= threshold90) return HeatRegion.likely90;
-    return HeatRegion.outside;
-  }
+  /// The region of cell [index].
+  HeatRegion regionOf(int index) => _regions[index];
 }

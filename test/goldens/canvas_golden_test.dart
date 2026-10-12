@@ -118,14 +118,16 @@ void main() {
     // A blob of probability in the south-west part of the L: 50 % core, 90 % ring.
     const cols = 32;
     const rows = 24;
-    final values = <double>[
+    final regions = <HeatRegion>[
       for (var r = 0; r < rows; r++)
         for (var c = 0; c < cols; c++)
           () {
             final dx = c - 8.0;
             final dy = r - 6.0;
             final d2 = dx * dx + dy * dy;
-            return d2 < 20 ? 0.01 : (d2 < 60 ? 0.004 : 0.0001);
+            return d2 < 20
+                ? HeatRegion.likely50
+                : (d2 < 60 ? HeatRegion.likely90 : HeatRegion.outside);
           }(),
     ];
     await tester.pumpWidget(
@@ -144,9 +146,7 @@ void main() {
             cell: const Meters(0.5),
             cols: cols,
             rows: rows,
-            values: values,
-            threshold50: 0.01,
-            threshold90: 0.004,
+            regions: regions,
           ),
         ),
       ),
