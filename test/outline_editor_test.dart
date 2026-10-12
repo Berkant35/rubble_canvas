@@ -153,4 +153,30 @@ void main() {
     await tester.tapAt(Offset(box.right - 50, box.center.dy));
     expect(selected, 1);
   });
+
+  testWidgets(
+    'an editor squeezed to no height draws nothing and does not hang',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Column(
+            children: [
+              SizedBox(
+                height: 0,
+                child: OutlineEditor(
+                  draft: const OutlineDraft.empty().add(p(0, 0)).add(p(5, 0)),
+                  onChanged: (_) {},
+                  style: _style,
+                  lengthLabel: (m) => '${m.value} m',
+                  semanticLabel: 'outline',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
