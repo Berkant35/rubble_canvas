@@ -1,0 +1,23 @@
+name: rubble_canvas
+description: BeneathSOS drawing canvas — metric grid, rubble outline editor with edge lengths, zoom and pan.
+version: 0.1.0
+publish_to: none # git dependency on rubble_core; consumed as a git dependency too
+repository: https://github.com/Berkant35/rubble_canvas
+issue_tracker: https://github.com/Berkant35/rubble_canvas/issues
+
+environment:
+  sdk: ^3.13.4
+  flutter: '>=3.47.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  rubble_core:
+    git:
+      url: https://github.com/Berkant35/rubble_core.git
+      ref: v0.1.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
