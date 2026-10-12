@@ -96,6 +96,17 @@ void main() {
       expect(stored.canUndo, isFalse);
     });
 
+    test('a corner moved away and back is a change undo can walk', () {
+      final back = square.move(2, p(12, 12)).move(2, p(10, 10));
+      expect(back.corners, square.corners);
+      expect(back, isNot(square));
+      expect(back.undo().undo(), square);
+    });
+
+    test('adding a corner on top of an existing one changes nothing', () {
+      expect(square.add(p(10, 10)), square);
+    });
+
     test('drafts with the same corners are equal', () {
       expect(
         const OutlineDraft.empty().add(p(1, 1)),

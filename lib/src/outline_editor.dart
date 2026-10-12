@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:rubble_canvas/src/canvas_geometry.dart';
 import 'package:rubble_canvas/src/outline_draft.dart';
@@ -73,6 +74,7 @@ class OutlineEditor extends StatefulWidget {
 class _OutlineEditorState extends State<OutlineEditor> {
   final _view = TransformationController();
   var _placed = false;
+  final _down = <int>{};
   int? _pointer;
   int? _corner;
   OutlineDraft? _dragStart;
@@ -126,16 +128,33 @@ class _OutlineEditorState extends State<OutlineEditor> {
   SitePoint _snapped(Offset canvas) =>
       CanvasGeometry.snap(_geometry.toSite(canvas), widget.snapStep);
 
+  @override
+  void didUpdateWidget(OutlineEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final start = _dragStart;
+    // Undo or Clear during a drag: the corner being dragged may be gone.
+    if (start != null && widget.draft.corners.length != start.corners.length) {
+      _endDrag();
+    }
+  }
+
   void _onTapUp(TapUpDetails details) {
-    final site = _geometry.toSite(details.localPosition);
-    if (widget.draft.cornerNear(site, _tolerance) != null) return;
-    widget.onChanged(widget.draft.add(_snapped(details.localPosition)));
+    // Only a tap exactly on an existing corner (after snapping) adds nothing; a tap near one, even
+    // zoomed out, still adds a corner.
+    final next = widget.draft.add(_snapped(details.localPosition));
+    if (!identical(next, widget.draft)) widget.onChanged(next);
   }
 
   void _onPointerDown(PointerDownEvent event) {
-    if (_pointer != null) {
-      // A second finger: stop dragging the corner, let the pinch zoom.
-      _endDrag();
+    _down.add(event.pointer);
+    if (_down.length > 1) {
+      // A pinch: never move a corner. A drag already running is undone, so the first finger's
+      // movement before the second landed leaves no trace.
+      final start = _dragStart;
+      if (start != null) {
+        _endDrag();
+        if (widget.draft != start) widget.onChanged(start);
+      }
       return;
     }
     final corner = widget.draft.cornerNear(
@@ -154,6 +173,7 @@ class _OutlineEditorState extends State<OutlineEditor> {
     final start = _dragStart;
     final corner = _corner;
     if (event.pointer != _pointer || start == null || corner == null) return;
+    if (corner >= widget.draft.corners.length) return;
     final next = start.move(corner, _snapped(event.localPosition));
     // Every move starts from the draft before the drag: one undo puts the corner back.
     if (next.corners[corner] != widget.draft.corners[corner]) {
@@ -162,7 +182,16 @@ class _OutlineEditorState extends State<OutlineEditor> {
   }
 
   void _onPointerEnd(PointerEvent event) {
-    if (event.pointer == _pointer) _endDrag();
+    _down.remove(event.pointer);
+    if (event.pointer != _pointer) return;
+    final start = _dragStart;
+    _endDrag();
+    // Dragged away and back: hand back the draft before the drag, so undo history stays clean.
+    if (start != null &&
+        listEquals(widget.draft.corners, start.corners) &&
+        widget.draft != start) {
+      widget.onChanged(start);
+    }
   }
 
   void _endDrag() => setState(() {

@@ -20,9 +20,10 @@ const _style = RubbleCanvasStyle(
 );
 
 class _Host extends StatefulWidget {
-  const _Host(this.initial, this.changes);
+  const _Host(this.initial, this.changes, {this.span = 30});
   final OutlineDraft initial;
   final List<OutlineDraft> changes;
+  final double span;
 
   @override
   State<_Host> createState() => _HostState();
@@ -40,7 +41,7 @@ class _HostState extends State<_Host> {
           draft: draft,
           geometry: _geometry,
           style: _style,
-          viewSpan: const Meters(30),
+          viewSpan: Meters(widget.span),
           initialCenter: const SitePoint(Meters.zero, Meters.zero),
           lengthLabel: (m) => '${m.value.toStringAsFixed(1)} m',
           semanticLabel: 'outline',
@@ -179,4 +180,81 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  final triangle = const OutlineDraft.empty()
+      .add(p(0, 0))
+      .add(p(5, 0))
+      .add(p(5, 5));
+
+  testWidgets('a pinch whose second finger lands on a corner never moves it', (
+    tester,
+  ) async {
+    final changes = <OutlineDraft>[];
+    await tester.pumpWidget(_Host(triangle, changes));
+    final first = await tester.startGesture(_screen(tester, p(-6, -6)));
+    final second = await tester.startGesture(_screen(tester, p(5, 5)));
+    await tester.pump();
+    for (var i = 1; i <= 10; i++) {
+      await first.moveTo(_screen(tester, p(-6.0 - i, -6.0 - i)));
+      await second.moveTo(_screen(tester, p(5 + i * 0.5, 5 + i * 0.5)));
+      await tester.pump();
+    }
+    await first.up();
+    await second.up();
+    await tester.pumpAndSettle();
+    expect(changes.isEmpty || changes.last.corners == triangle.corners, isTrue);
+    expect(
+      changes.isEmpty ? triangle.corners : changes.last.corners,
+      triangle.corners,
+    );
+  });
+
+  testWidgets('a second finger during a corner drag puts the corner back', (
+    tester,
+  ) async {
+    final changes = <OutlineDraft>[];
+    await tester.pumpWidget(_Host(triangle, changes));
+    final first = await tester.startGesture(_screen(tester, p(5, 5)));
+    await tester.pump();
+    for (var i = 1; i <= 4; i++) {
+      await first.moveTo(_screen(tester, p(5 + i * 0.5, 5)));
+      await tester.pump();
+    }
+    expect(changes.last.corners[2], isNot(p(5, 5)));
+    final second = await tester.startGesture(_screen(tester, p(-8, -8)));
+    await tester.pump();
+    expect(changes.last.corners, triangle.corners);
+    await first.up();
+    await second.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('a corner dragged away and back leaves undo working', (
+    tester,
+  ) async {
+    final changes = <OutlineDraft>[];
+    await tester.pumpWidget(_Host(triangle, changes));
+    final gesture = await tester.startGesture(_screen(tester, p(5, 5)));
+    await tester.pump();
+    for (final x in [6.0, 7.0, 6.0, 5.0]) {
+      await gesture.moveTo(_screen(tester, p(x, 5)));
+      await tester.pump();
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(changes.last.corners, triangle.corners);
+    expect(changes.last.undo().corners, triangle.undo().corners);
+  });
+
+  testWidgets('zoomed out, a tap 1.5 m from a corner still adds one', (
+    tester,
+  ) async {
+    final changes = <OutlineDraft>[];
+    // 60 m across 300 px: half zoom, where the grab radius is 4.8 m.
+    await tester.pumpWidget(_Host(triangle, changes, span: 60));
+    final rect = tester.getRect(find.byType(OutlineEditor));
+    await tester.tapAt(rect.center + const Offset(6.5 * 5, -5 * 5));
+    await tester.pumpAndSettle();
+    expect(changes.single.corners.last, p(6.5, 5));
+  });
 }

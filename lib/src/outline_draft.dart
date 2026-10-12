@@ -31,8 +31,9 @@ final class OutlineDraft {
     List.unmodifiable([..._history, this.corners]),
   );
 
-  /// Adds [corner] after the last one.
-  OutlineDraft add(SitePoint corner) => _next([...corners, corner]);
+  /// Adds [corner] after the last one; a corner on top of an existing one changes nothing.
+  OutlineDraft add(SitePoint corner) =>
+      corners.contains(corner) ? this : _next([...corners, corner]);
 
   /// Moves corner [index] to [to].
   OutlineDraft move(int index, SitePoint to) =>
@@ -111,8 +112,12 @@ final class OutlineDraft {
 
   @override
   bool operator ==(Object other) =>
-      other is OutlineDraft && listEquals(other.corners, corners);
+      other is OutlineDraft &&
+      listEquals(other.corners, corners) &&
+      other._history.length == _history.length;
 
+  /// Same corners and the same number of steps to undo: a corner moved away and back is a different
+  /// draft, so listeners rebuild and undo keeps walking back.
   @override
-  int get hashCode => Object.hashAll(corners);
+  int get hashCode => Object.hash(Object.hashAll(corners), _history.length);
 }
