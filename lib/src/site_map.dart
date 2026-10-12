@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:rubble_canvas/src/canvas_geometry.dart';
+import 'package:rubble_canvas/src/heat_layer.dart';
 import 'package:rubble_canvas/src/outline_painter.dart';
 import 'package:rubble_canvas/src/rubble_canvas_style.dart';
 import 'package:rubble_core/rubble_core.dart';
@@ -68,6 +69,9 @@ enum MapPointKind {
 
   /// Being measured now.
   measuring,
+
+  /// Suggested as the next most informative spot.
+  suggested,
 }
 
 /// A point to draw on the map.
@@ -100,8 +104,12 @@ class SiteMap extends StatelessWidget {
     required this.style,
     required this.semanticLabel,
     this.onTap,
+    this.heat,
     super.key,
   });
+
+  /// The probability regions to draw under the outline, if any.
+  final HeatLayer? heat;
 
   /// The rubble outline.
   final RubblePolygon outline;
@@ -142,6 +150,7 @@ class SiteMap extends StatelessWidget {
               outline: outline,
               points: points,
               style: style,
+              heat: heat,
             ),
           ),
         );
@@ -156,7 +165,10 @@ class _SiteMapPainter extends CustomPainter {
     required this.outline,
     required this.points,
     required this.style,
+    required this.heat,
   });
+
+  final HeatLayer? heat;
 
   final SiteMapView view;
   final RubblePolygon outline;
@@ -183,6 +195,7 @@ class _SiteMapPainter extends CustomPainter {
     for (var y = firstY.dy; y < size.height; y += step) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
+    if (heat case final heat?) _paintHeat(canvas, heat);
     final path = Path()
       ..addPolygon([for (final c in outline.corners) view.toScreen(c)], true);
     canvas
@@ -209,6 +222,17 @@ class _SiteMapPainter extends CustomPainter {
               ..style = PaintingStyle.stroke
               ..strokeWidth = 3,
           );
+        case MapPointKind.suggested:
+          canvas
+            ..drawCircle(
+              at,
+              r + 4,
+              Paint()
+                ..color = style.highlight
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 3,
+            )
+            ..drawCircle(at, 3, Paint()..color = style.highlight);
         case MapPointKind.measuring:
           canvas
             ..drawCircle(at, r + 3, Paint()..color = style.highlight)
@@ -217,10 +241,40 @@ class _SiteMapPainter extends CustomPainter {
     }
   }
 
+  void _paintHeat(Canvas canvas, HeatLayer heat) {
+    final colour = style.region ?? style.highlight;
+    final likely = Path();
+    final possible = Path();
+    final side = heat.cell.value * view.pxPerMetre;
+    for (var i = 0; i < heat.values.length; i++) {
+      final region = switch (heat.regionOf(i)) {
+        HeatRegion.likely50 => likely,
+        HeatRegion.likely90 => possible,
+        HeatRegion.outside => null,
+      };
+      if (region == null) continue;
+      final corner = view.toScreen(
+        SitePoint(
+          Meters(heat.origin.x.value + heat.cell.value * (i % heat.cols)),
+          Meters(heat.origin.y.value + heat.cell.value * (i ~/ heat.cols + 1)),
+        ),
+      );
+      // A hair larger than the cell, so neighbours leave no seams; one path per region paints
+      // overlaps once.
+      region.addRect(
+        Rect.fromLTWH(corner.dx, corner.dy, side + 0.5, side + 0.5),
+      );
+    }
+    canvas
+      ..drawPath(possible, Paint()..color = colour.withValues(alpha: 0.22))
+      ..drawPath(likely, Paint()..color = colour.withValues(alpha: 0.55));
+  }
+
   @override
   bool shouldRepaint(_SiteMapPainter oldDelegate) =>
       oldDelegate.outline != outline ||
       !listEquals(oldDelegate.points, points) ||
       oldDelegate.style != style ||
+      oldDelegate.heat != heat ||
       oldDelegate.view.pxPerMetre != view.pxPerMetre;
 }

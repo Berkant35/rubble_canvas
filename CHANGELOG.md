@@ -1,3 +1,7 @@
+## 0.3.0
+- `HeatLayer`: probabilities on a grid with 50 % / 90 % thresholds, drawn by `SiteMap` as two regions
+  (never a single point); `MapPointKind.suggested`; optional `RubbleCanvasStyle.region` colour.
+
 ## 0.2.0
 - `SiteMap`: the outline fitted to a box with a 5 m margin, measurement points (heard, not heard,
   measuring), tap to report a site point (0.5 m snap); `SiteMapView` fit transform.

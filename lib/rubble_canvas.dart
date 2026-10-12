@@ -3,6 +3,7 @@ library;
 
 export 'src/canvas_geometry.dart';
 export 'src/edge_picker.dart';
+export 'src/heat_layer.dart';
 export 'src/outline_draft.dart';
 export 'src/outline_editor.dart';
 export 'src/outline_painter.dart';

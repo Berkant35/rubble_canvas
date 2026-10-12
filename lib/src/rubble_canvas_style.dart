@@ -15,6 +15,7 @@ final class RubbleCanvasStyle {
     required this.highlight,
     required this.label,
     required this.labelBackground,
+    this.region,
   });
 
   /// Behind the grid.
@@ -40,4 +41,7 @@ final class RubbleCanvasStyle {
 
   /// Behind side-length labels, so they stay readable over the grid.
   final Color labelBackground;
+
+  /// Probability regions (50 % strong, 90 % light); [highlight] when null.
+  final Color? region;
 }

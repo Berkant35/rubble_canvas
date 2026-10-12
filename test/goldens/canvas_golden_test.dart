@@ -111,4 +111,49 @@ void main() {
       matchesGoldenFile('site_map.png'),
     );
   });
+
+  testWidgets('site map with probability regions and a suggested point', (
+    tester,
+  ) async {
+    // A blob of probability in the south-west part of the L: 50 % core, 90 % ring.
+    const cols = 32;
+    const rows = 24;
+    final values = <double>[
+      for (var r = 0; r < rows; r++)
+        for (var c = 0; c < cols; c++)
+          () {
+            final dx = c - 8.0;
+            final dy = r - 6.0;
+            final d2 = dx * dx + dy * dy;
+            return d2 < 20 ? 0.01 : (d2 < 60 ? 0.004 : 0.0001);
+          }(),
+    ];
+    await tester.pumpWidget(
+      _frame(
+        SiteMap(
+          outline: _lShape.polygon!,
+          points: [
+            MapPoint(at: p(-10, -8), kind: MapPointKind.heard),
+            MapPoint(at: p(10, -8), kind: MapPointKind.notHeard),
+            MapPoint(at: p(-10, 8), kind: MapPointKind.suggested),
+          ],
+          style: _light,
+          semanticLabel: 'map',
+          heat: HeatLayer(
+            origin: p(-8, -6),
+            cell: const Meters(0.5),
+            cols: cols,
+            rows: rows,
+            values: values,
+            threshold50: 0.01,
+            threshold90: 0.004,
+          ),
+        ),
+      ),
+    );
+    await expectLater(
+      find.byKey(const ValueKey('golden')),
+      matchesGoldenFile('site_map_heat.png'),
+    );
+  });
 }
