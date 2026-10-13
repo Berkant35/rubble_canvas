@@ -138,6 +138,7 @@ void main() {
             MapPoint(at: p(-10, -8), kind: MapPointKind.heard),
             MapPoint(at: p(10, -8), kind: MapPointKind.notHeard),
             MapPoint(at: p(-10, 8), kind: MapPointKind.suggested),
+            MapPoint(at: p(-6, 4), kind: MapPointKind.found),
           ],
           style: _light,
           semanticLabel: 'map',

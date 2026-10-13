@@ -1,3 +1,6 @@
+## 0.4.0
+- `MapPointKind.found`: where the phone was actually found (a cross, unlike every measured dot).
+
 ## 0.3.0
 - `HeatLayer`: the 50 % / 90 % region of every grid cell, drawn by `SiteMap` as two regions
   (never a single point); `MapPointKind.suggested`; optional `RubbleCanvasStyle.region` colour.

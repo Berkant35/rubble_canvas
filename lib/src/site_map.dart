@@ -72,6 +72,9 @@ enum MapPointKind {
 
   /// Suggested as the next most informative spot.
   suggested,
+
+  /// Where the phone was actually found (research record) — a cross, unlike every measured dot.
+  found,
 }
 
 /// A point to draw on the map.
@@ -237,6 +240,23 @@ class _SiteMapPainter extends CustomPainter {
           canvas
             ..drawCircle(at, r + 3, Paint()..color = style.highlight)
             ..drawCircle(at, r - 3, Paint()..color = style.labelBackground);
+        case MapPointKind.found:
+          final cross = Paint()
+            ..color = style.outline
+            ..strokeWidth = 4
+            ..strokeCap = StrokeCap.round;
+          const d = r + 2;
+          canvas
+            ..drawLine(
+              at + const Offset(-d, -d),
+              at + const Offset(d, d),
+              cross,
+            )
+            ..drawLine(
+              at + const Offset(-d, d),
+              at + const Offset(d, -d),
+              cross,
+            );
       }
     }
   }
