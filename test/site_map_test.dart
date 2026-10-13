@@ -67,4 +67,16 @@ void main() {
     await tester.tap(find.byType(SiteMap));
     expect(tester.takeException(), isNull);
   });
+
+  test('points are equal only with the same label and strength', () {
+    const at = SitePoint(Meters(1), Meters(2));
+    expect(
+      const MapPoint(at: at, kind: MapPointKind.heard, label: '−70'),
+      const MapPoint(at: at, kind: MapPointKind.heard, label: '−70'),
+    );
+    expect(
+      const MapPoint(at: at, kind: MapPointKind.heard, strength: 0.2),
+      isNot(const MapPoint(at: at, kind: MapPointKind.heard, strength: 0.8)),
+    );
+  });
 }

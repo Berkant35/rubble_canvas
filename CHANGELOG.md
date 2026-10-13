@@ -1,3 +1,8 @@
+## 0.5.0
+- Measured points are diamonds (never mistaken for the outline's round corners); a heard point warms from
+  blue to orange with `MapPoint.strength` and can show a `label` (its signal).
+- `SiteMap(likely:)`: the most likely spot as a crosshair with its dashed 50 % circle (`LikelySpot`).
+
 ## 0.4.0
 - `MapPointKind.found`: where the phone was actually found (a cross, unlike every measured dot).
 

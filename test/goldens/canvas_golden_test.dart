@@ -157,4 +157,39 @@ void main() {
       matchesGoldenFile('site_map_heat.png'),
     );
   });
+
+  testWidgets(
+    'site map: signal labels warm with strength, and the likely spot with its circle',
+    (tester) async {
+      await tester.pumpWidget(
+        _frame(
+          SiteMap(
+            outline: _lShape.polygon!,
+            points: [
+              MapPoint(
+                at: p(-10, -8),
+                kind: MapPointKind.heard,
+                label: '−62',
+                strength: 0.95,
+              ),
+              MapPoint(
+                at: p(0, -8),
+                kind: MapPointKind.heard,
+                label: '−88',
+                strength: 0.3,
+              ),
+              MapPoint(at: p(10, -8), kind: MapPointKind.notHeard),
+            ],
+            likely: (centre: p(-5, -3), radius: const Meters(2.5)),
+            style: _light,
+            semanticLabel: 'map',
+          ),
+        ),
+      );
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('site_map_likely.png'),
+      );
+    },
+  );
 }

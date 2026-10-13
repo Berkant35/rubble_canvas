@@ -80,8 +80,14 @@ enum MapPointKind {
 /// A point to draw on the map.
 @immutable
 final class MapPoint {
-  /// Creates a point.
-  const MapPoint({required this.at, required this.kind});
+  /// Creates a point; a measured point may carry a short [label] (its signal) and a [strength]
+  /// from 0 (weak) to 1 (strong) that warms its colour.
+  const MapPoint({
+    required this.at,
+    required this.kind,
+    this.label,
+    this.strength,
+  });
 
   /// Where.
   final SitePoint at;
@@ -89,13 +95,27 @@ final class MapPoint {
   /// What it shows.
   final MapPointKind kind;
 
-  @override
-  bool operator ==(Object other) =>
-      other is MapPoint && other.at == at && other.kind == kind;
+  /// Shown next to the point, e.g. "−72".
+  final String? label;
+
+  /// 0 (weak) … 1 (strong); measured points only.
+  final double? strength;
 
   @override
-  int get hashCode => Object.hash(at, kind);
+  bool operator ==(Object other) =>
+      other is MapPoint &&
+      other.at == at &&
+      other.kind == kind &&
+      other.label == label &&
+      other.strength == strength;
+
+  @override
+  int get hashCode => Object.hash(at, kind, label, strength);
 }
+
+/// Where the phone most likely is, with the circle that holds it at 50 % — never a spot without its
+/// uncertainty (rule 1).
+typedef LikelySpot = ({SitePoint centre, Meters radius});
 
 /// The outline and the measurement points around it; with [onTap], a tap reports the site point
 /// under the finger (snapped to 0.5 m) — "measure where I stand".
@@ -108,8 +128,12 @@ class SiteMap extends StatelessWidget {
     required this.semanticLabel,
     this.onTap,
     this.heat,
+    this.likely,
     super.key,
   });
+
+  /// The most likely spot and its 50 % circle, if any.
+  final LikelySpot? likely;
 
   /// The probability regions to draw under the outline, if any.
   final HeatLayer? heat;
@@ -154,6 +178,7 @@ class SiteMap extends StatelessWidget {
               points: points,
               style: style,
               heat: heat,
+              likely: likely,
             ),
           ),
         );
@@ -169,9 +194,11 @@ class _SiteMapPainter extends CustomPainter {
     required this.points,
     required this.style,
     required this.heat,
+    required this.likely,
   });
 
   final HeatLayer? heat;
+  final LikelySpot? likely;
 
   final SiteMapView view;
   final RubblePolygon outline;
@@ -210,16 +237,34 @@ class _SiteMapPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3,
       );
+    if (likely case final likely?) _paintLikely(canvas, likely);
     for (final point in points) {
       final at = view.toScreen(point.at);
       const r = OutlinePainter.cornerRadius;
       switch (point.kind) {
+        // Measured points are diamonds, never mistaken for the outline's round corners.
         case MapPointKind.heard:
-          canvas.drawCircle(at, r, Paint()..color = style.corner);
+          final diamond = _diamond(at, r + 2);
+          canvas
+            ..drawPath(
+              diamond,
+              Paint()
+                ..color = Color.lerp(
+                  style.corner,
+                  style.highlight,
+                  (point.strength ?? 0).clamp(0, 1),
+                )!,
+            )
+            ..drawPath(
+              diamond,
+              Paint()
+                ..color = style.background
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.5,
+            );
         case MapPointKind.notHeard:
-          canvas.drawCircle(
-            at,
-            r - 1.5,
+          canvas.drawPath(
+            _diamond(at, r),
             Paint()
               ..color = style.corner
               ..style = PaintingStyle.stroke
@@ -258,7 +303,69 @@ class _SiteMapPainter extends CustomPainter {
               cross,
             );
       }
+      if (point.label case final label?) {
+        _label(canvas, label, at + const Offset(0, -(r + 16)));
+      }
     }
+  }
+
+  static Path _diamond(Offset at, double r) => Path()
+    ..moveTo(at.dx, at.dy - r)
+    ..lineTo(at.dx + r, at.dy)
+    ..lineTo(at.dx, at.dy + r)
+    ..lineTo(at.dx - r, at.dy)
+    ..close();
+
+  void _label(Canvas canvas, String text, Offset at) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style.label),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    const pad = 3.0;
+    final box = Rect.fromCenter(
+      center: at,
+      width: painter.width + 2 * pad,
+      height: painter.height + 2 * pad,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(box, const Radius.circular(4)),
+      Paint()..color = style.labelBackground,
+    );
+    painter
+      ..paint(canvas, box.topLeft + const Offset(pad, pad))
+      ..dispose();
+  }
+
+  /// A dashed circle (the 50 % circle) and a crosshair at its centre.
+  void _paintLikely(Canvas canvas, LikelySpot likely) {
+    final centre = view.toScreen(likely.centre);
+    final radius = math.max(likely.radius.value * view.pxPerMetre, 6.0);
+    final pen = Paint()
+      ..color = style.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    const dashes = 36;
+    for (var i = 0; i < dashes; i += 2) {
+      canvas.drawArc(
+        Rect.fromCircle(center: centre, radius: radius),
+        i * 2 * math.pi / dashes,
+        2 * math.pi / dashes,
+        false,
+        pen,
+      );
+    }
+    const arm = 9.0;
+    canvas
+      ..drawLine(
+        centre - const Offset(arm, 0),
+        centre + const Offset(arm, 0),
+        pen,
+      )
+      ..drawLine(
+        centre - const Offset(0, arm),
+        centre + const Offset(0, arm),
+        pen,
+      );
   }
 
   void _paintHeat(Canvas canvas, HeatLayer heat) {
@@ -296,5 +403,6 @@ class _SiteMapPainter extends CustomPainter {
       !listEquals(oldDelegate.points, points) ||
       oldDelegate.style != style ||
       oldDelegate.heat != heat ||
+      oldDelegate.likely != likely ||
       oldDelegate.view.pxPerMetre != view.pxPerMetre;
 }
