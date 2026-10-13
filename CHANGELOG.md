@@ -1,3 +1,6 @@
+## 0.6.1
+- rubble_core v0.3.0.
+
 ## 0.6.0
 - `SiteMap(circles:)`: a circle around a measured point in its own colour (`MapCircle`).
 - `SiteMap(measure:)`: a dashed, labelled distance line with a ringed end mark (`MapMeasure`).
