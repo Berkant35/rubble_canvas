@@ -87,6 +87,7 @@ final class MapPoint {
     required this.kind,
     this.label,
     this.strength,
+    this.color,
   });
 
   /// Where.
@@ -101,21 +102,31 @@ final class MapPoint {
   /// 0 (weak) … 1 (strong); measured points only.
   final double? strength;
 
+  /// A colour of its own (e.g. the colour of its signal circle); overrides [strength].
+  final Color? color;
+
   @override
   bool operator ==(Object other) =>
       other is MapPoint &&
       other.at == at &&
       other.kind == kind &&
       other.label == label &&
-      other.strength == strength;
+      other.strength == strength &&
+      other.color == color;
 
   @override
-  int get hashCode => Object.hash(at, kind, label, strength);
+  int get hashCode => Object.hash(at, kind, label, strength, color);
 }
 
 /// Where the phone most likely is, with the circle that holds it at 50 % — never a spot without its
 /// uncertainty (rule 1).
 typedef LikelySpot = ({SitePoint centre, Meters radius});
+
+/// A circle around a measured point (a rough signal-distance guide), in its own colour.
+typedef MapCircle = ({SitePoint centre, Meters radius, Color color});
+
+/// A measured distance: a dashed line [from] → [to] with its [label] (e.g. "4.2 m") and a mark at [to].
+typedef MapMeasure = ({SitePoint from, SitePoint to, String label});
 
 /// The outline and the measurement points around it; with [onTap], a tap reports the site point
 /// under the finger (snapped to 0.5 m) — "measure where I stand".
@@ -129,8 +140,16 @@ class SiteMap extends StatelessWidget {
     this.onTap,
     this.heat,
     this.likely,
+    this.circles = const [],
+    this.measure,
     super.key,
   });
+
+  /// Circles to draw under the points.
+  final List<MapCircle> circles;
+
+  /// A measured distance to draw, if any.
+  final MapMeasure? measure;
 
   /// The most likely spot and its 50 % circle, if any.
   final LikelySpot? likely;
@@ -179,6 +198,8 @@ class SiteMap extends StatelessWidget {
               style: style,
               heat: heat,
               likely: likely,
+              circles: circles,
+              measure: measure,
             ),
           ),
         );
@@ -195,10 +216,14 @@ class _SiteMapPainter extends CustomPainter {
     required this.style,
     required this.heat,
     required this.likely,
+    required this.circles,
+    required this.measure,
   });
 
   final HeatLayer? heat;
   final LikelySpot? likely;
+  final List<MapCircle> circles;
+  final MapMeasure? measure;
 
   final SiteMapView view;
   final RubblePolygon outline;
@@ -237,7 +262,11 @@ class _SiteMapPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3,
       );
+    for (final circle in circles) {
+      _paintCircle(canvas, circle);
+    }
     if (likely case final likely?) _paintLikely(canvas, likely);
+    if (measure case final measure?) _paintMeasure(canvas, measure);
     for (final point in points) {
       final at = view.toScreen(point.at);
       const r = OutlinePainter.cornerRadius;
@@ -249,11 +278,13 @@ class _SiteMapPainter extends CustomPainter {
             ..drawPath(
               diamond,
               Paint()
-                ..color = Color.lerp(
-                  style.corner,
-                  style.highlight,
-                  (point.strength ?? 0).clamp(0, 1),
-                )!,
+                ..color =
+                    point.color ??
+                    Color.lerp(
+                      style.corner,
+                      style.highlight,
+                      (point.strength ?? 0).clamp(0, 1),
+                    )!,
             )
             ..drawPath(
               diamond,
@@ -336,6 +367,58 @@ class _SiteMapPainter extends CustomPainter {
       ..dispose();
   }
 
+  void _paintCircle(Canvas canvas, MapCircle circle) {
+    final centre = view.toScreen(circle.centre);
+    final radius = circle.radius.value * view.pxPerMetre;
+    canvas
+      ..drawCircle(
+        centre,
+        radius,
+        Paint()..color = circle.color.withValues(alpha: 0.08),
+      )
+      ..drawCircle(
+        centre,
+        radius,
+        Paint()
+          ..color = circle.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+  }
+
+  /// A dashed line with its length in the middle and a ringed dot where it ends.
+  void _paintMeasure(Canvas canvas, MapMeasure measure) {
+    final from = view.toScreen(measure.from);
+    final to = view.toScreen(measure.to);
+    final pen = Paint()
+      ..color = style.outline
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    final length = (to - from).distance;
+    if (length > 0) {
+      final unit = (to - from) / length;
+      for (var d = 0.0; d < length; d += 12) {
+        canvas.drawLine(
+          from + unit * d,
+          from + unit * math.min(d + 7, length),
+          pen,
+        );
+      }
+    }
+    canvas
+      ..drawCircle(to, 9, Paint()..color = style.background)
+      ..drawCircle(
+        to,
+        9,
+        Paint()
+          ..color = style.outline
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5,
+      )
+      ..drawCircle(to, 3.5, Paint()..color = style.outline);
+    _label(canvas, measure.label, Offset.lerp(from, to, 0.5)!);
+  }
+
   /// A dashed circle (the 50 % circle) and a crosshair at its centre.
   void _paintLikely(Canvas canvas, LikelySpot likely) {
     final centre = view.toScreen(likely.centre);
@@ -404,5 +487,7 @@ class _SiteMapPainter extends CustomPainter {
       oldDelegate.style != style ||
       oldDelegate.heat != heat ||
       oldDelegate.likely != likely ||
+      !listEquals(oldDelegate.circles, circles) ||
+      oldDelegate.measure != measure ||
       oldDelegate.view.pxPerMetre != view.pxPerMetre;
 }

@@ -192,4 +192,34 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'site map: signal circles in their own colours and the measured distance to where they meet',
+    (tester) async {
+      const red = Color(0xFFE53935);
+      const violet = Color(0xFF5E35B1);
+      await tester.pumpWidget(
+        _frame(
+          SiteMap(
+            outline: _lShape.polygon!,
+            points: [
+              MapPoint(at: p(-10, -8), kind: MapPointKind.heard, color: red),
+              MapPoint(at: p(10, -8), kind: MapPointKind.heard, color: violet),
+            ],
+            circles: [
+              (centre: p(-10, -8), radius: const Meters(9), color: red),
+              (centre: p(10, -8), radius: const Meters(12), color: violet),
+            ],
+            measure: (from: p(-10, -8), to: p(-3, -2), label: '9.2 m'),
+            style: _light,
+            semanticLabel: 'map',
+          ),
+        ),
+      );
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('site_map_circles.png'),
+      );
+    },
+  );
 }

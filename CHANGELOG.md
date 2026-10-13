@@ -1,3 +1,8 @@
+## 0.6.0
+- `SiteMap(circles:)`: a circle around a measured point in its own colour (`MapCircle`).
+- `SiteMap(measure:)`: a dashed, labelled distance line with a ringed end mark (`MapMeasure`).
+- `MapPoint.color`: a measured point in the colour of its circle.
+
 ## 0.5.0
 - Measured points are diamonds (never mistaken for the outline's round corners); a heard point warms from
   blue to orange with `MapPoint.strength` and can show a `label` (its signal).
